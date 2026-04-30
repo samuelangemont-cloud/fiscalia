@@ -1,0 +1,13 @@
+# FiscalIA — Guide de déploiement
+
+## Structure du projet
+
+fiscalia-vercel/
+├── api/
+│   └── chat.js        ← Le serveur sécurisé (cache votre clé API)
+├── public/
+│   └── index.html     ← L'agent IA pour vos clients
+├── vercel.json        ← Configuration Vercel
+└── README.md          ← Ce guide
+
+## Étapes de déploiement → voir le guide PDF fourni
