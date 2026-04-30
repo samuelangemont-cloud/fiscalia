@@ -443,7 +443,7 @@
 <header>
   <div class="logo">Fiscal<span>IA</span></div>
   <div class="badge">Agent IA</div>
-  <div class="year-badge">Déclaration 2025 → Revenus 2024</div>
+  <div class="year-badge">Déclaration 2026 → Revenus 2025</div>
   <button class="export-btn" onclick="openExportModal()" id="exportBtn">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
     Exporter PDF
@@ -534,7 +534,7 @@
 
 <script>
 const SYSTEM_PROMPT = `Tu es Léa, une conseillère fiscale IA experte en déclaration d'impôts sur le revenu en France.
-Tu aides les contribuables à remplir leur déclaration 2025 (revenus 2024) de manière simple et bienveillante.
+Tu aides les contribuables à remplir leur déclaration 2026 (revenus 2025) de manière simple et bienveillante.
 
 RÔLE :
 - Guider l'utilisateur étape par étape : identification, revenus, charges déductibles, réductions/crédits d'impôt, récapitulatif.
@@ -990,7 +990,7 @@ function generatePDF() {
   doc.setFontSize(7.5);
   doc.setTextColor(13, 27, 42);
   doc.text('⚠ Ce document est une aide à la préparation de votre déclaration. Il ne constitue pas un avis fiscal officiel.', W/2, 289, { align: 'center' });
-  doc.text('Pour valider votre déclaration, rendez-vous sur impots.gouv.fr avant le 22 mai 2025.', W/2, 294, { align: 'center' });
+  doc.text('Pour valider votre déclaration, rendez-vous sur impots.gouv.fr avant le 22 mai 2026.', W/2, 294, { align: 'center' });
 
   // Download
   const filename = `FiscalIA_${nom}_${prenom}_2024.pdf`.replace(/\s+/g, '_');
