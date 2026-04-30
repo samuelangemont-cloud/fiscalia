@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FiscalIA — Déclaration de revenus assistée</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --navy: #0d1b2a;
+    --gold: #c9a84c;
+    --gold-light: #e8c97a;
+    --cream: #f5f0e8;
+    --cream-dark: #ede6d6;
+    --text: #1a1a2e;
+    --muted: #6b7280;
+    --white: #ffffff;
+    --success: #2d6a4f;
+    --border: rgba(201,168,76,0.25);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--navy);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--navy);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    color: var(--gold);
+    letter-spacing: 0.03em;
+  }
+  .logo span { color: var(--cream); }
+  .badge {
+    background: rgba(201,168,76,0.15);
+    border: 1px solid var(--border);
+    color: var(--gold-light);
+    font-size: 0.7rem;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-left: 4px;
+  }
+  .year-badge {
+    margin-left: auto;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+
+  /* EXPORT BUTTON */
+  .export-btn {
+    margin-left: 16px;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    color: var(--navy);
+    border: none;
+    border-radius: 10px;
+    padding: 8px 18px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+  .export-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(201,168,76,0.35); }
+  .export-btn:active { transform: none; }
+  .export-btn.loading { opacity: 0.7; cursor: not-allowed; }
+
+  /* MODAL OVERLAY */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(13,27,42,0.85);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease;
+  }
+  .modal-overlay.open { display: flex; }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+  .modal {
+    background: var(--cream);
+    border-radius: 20px;
+    width: 540px;
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.4);
+    animation: slideUp 0.3s ease;
+  }
+  @keyframes slideUp { from{transform:translateY(20px);opacity:0} to{transform:none;opacity:1} }
+
+  .modal-header {
+    background: var(--navy);
+    padding: 24px 28px;
+    border-radius: 20px 20px 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .modal-header h2 { font-family: 'Playfair Display', serif; color: var(--gold); font-size: 1.25rem; }
+  .modal-close {
+    background: rgba(255,255,255,0.1);
+    border: none;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    color: var(--cream);
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+  .modal-close:hover { background: rgba(255,255,255,0.2); }
+
+  .modal-body { padding: 28px; }
+  .modal-body h3 { font-family: 'Playfair Display', serif; font-size: 0.95rem; color: var(--navy); margin-bottom: 14px; }
+
+  .form-row { margin-bottom: 16px; }
+  .form-label { display: block; font-size: 0.8rem; font-weight: 500; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .form-input {
+    width: 100%;
+    border: 1.5px solid var(--cream-dark);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    color: var(--text);
+    background: var(--white);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-input:focus { border-color: var(--gold); }
+  .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .modal-divider { height: 1px; background: var(--cream-dark); margin: 20px 0; }
+
+  .tax-preview {
+    background: var(--navy);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .tax-preview h3 { font-family: 'Playfair Display', serif; color: var(--gold); font-size: 0.9rem; margin-bottom: 14px; }
+  .tax-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.07); font-size: 0.85rem; color: var(--cream-dark); }
+  .tax-row:last-child { border-bottom: none; font-weight: 600; color: var(--gold-light); font-size: 0.95rem; }
+  .tax-row .tv { color: var(--gold-light); }
+  .tax-row:last-child .tv { color: #6fcf97; font-size: 1.05rem; }
+
+  .modal-actions { display: flex; gap: 12px; justify-content: flex-end; }
+  .btn-secondary {
+    background: transparent;
+    border: 1.5px solid var(--cream-dark);
+    color: var(--muted);
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-secondary:hover { border-color: var(--navy); color: var(--navy); }
+  .btn-primary {
+    background: var(--navy);
+    border: none;
+    color: var(--gold);
+    padding: 10px 24px;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+    transition: all 0.2s;
+  }
+  .btn-primary:hover { background: #1e3a5f; }
+
+  /* LAYOUT */
+  .app {
+    display: flex;
+    flex: 1;
+    height: calc(100vh - 65px);
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 290px;
+    background: rgba(255,255,255,0.03);
+    border-right: 1px solid var(--border);
+    padding: 28px 20px;
+    flex-shrink: 0;
+    overflow-y: auto;
+  }
+  .sidebar-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    margin-bottom: 16px;
+    padding-left: 4px;
+  }
+  .step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+  }
+  .step-item:hover { background: rgba(201,168,76,0.07); }
+  .step-item.active {
+    background: rgba(201,168,76,0.12);
+    border-color: var(--border);
+  }
+  .step-num {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(201,168,76,0.3);
+    color: var(--gold);
+    font-size: 0.75rem;
+    font-weight: 500;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .step-item.done .step-num {
+    background: rgba(45,106,79,0.3);
+    border-color: #2d6a4f;
+    color: #6fcf97;
+  }
+  .step-item.done .step-num::after { content: "✓"; }
+  .step-item.done .step-num span { display: none; }
+  .step-label { font-size: 0.88rem; color: var(--cream); font-weight: 400; }
+  .step-sub { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+
+  .sidebar-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 20px 0;
+  }
+  .info-box {
+    background: rgba(201,168,76,0.07);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .info-box p { font-size: 0.8rem; color: var(--cream-dark); line-height: 1.5; }
+  .info-box strong { color: var(--gold-light); }
+
+  /* CHAT AREA */
+  .chat-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--cream);
+    overflow: hidden;
+  }
+
+  .chat-header {
+    background: var(--white);
+    border-bottom: 1px solid var(--cream-dark);
+    padding: 16px 28px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .agent-avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--navy), #1e3a5f);
+    border: 2px solid var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem;
+  }
+  .agent-info .name { font-weight: 500; color: var(--text); font-size: 0.95rem; }
+  .agent-info .status { font-size: 0.78rem; color: var(--success); display: flex; align-items: center; gap: 5px; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #6fcf97; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    scroll-behavior: smooth;
+  }
+
+  .msg { display: flex; gap: 12px; max-width: 80%; animation: fadeUp 0.3s ease; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+  .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+  .msg.user .bubble {
+    background: var(--navy);
+    color: var(--cream);
+    border-radius: 18px 18px 4px 18px;
+  }
+  .msg.bot .bubble {
+    background: var(--white);
+    color: var(--text);
+    border-radius: 18px 18px 18px 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .bubble {
+    padding: 14px 18px;
+    font-size: 0.92rem;
+    line-height: 1.65;
+    max-width: 100%;
+    border: 1px solid transparent;
+  }
+  .msg.bot .bubble { border-color: rgba(0,0,0,0.05); }
+
+  .avatar-sm {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+  .avatar-sm.bot { background: linear-gradient(135deg,var(--navy),#1e3a5f); border: 1.5px solid var(--gold); }
+  .avatar-sm.user { background: var(--gold); color: var(--navy); font-weight: 700; }
+
+  /* Quick replies */
+  .quick-replies {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .qr-btn {
+    background: var(--white);
+    border: 1.5px solid var(--gold);
+    color: var(--navy);
+    padding: 7px 16px;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+  }
+  .qr-btn:hover { background: var(--gold); color: var(--navy); }
+
+  /* Typing */
+  .typing-indicator { display: flex; gap: 5px; align-items: center; padding: 6px 0; }
+  .typing-indicator span {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--muted); animation: bounce 1.2s infinite;
+  }
+  .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,60%,100%{transform:none} 30%{transform:translateY(-6px)} }
+
+  /* INPUT */
+  .input-area {
+    background: var(--white);
+    border-top: 1px solid var(--cream-dark);
+    padding: 16px 24px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+  }
+  #userInput {
+    flex: 1;
+    border: 1.5px solid var(--cream-dark);
+    border-radius: 14px;
+    padding: 12px 18px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.92rem;
+    color: var(--text);
+    resize: none;
+    min-height: 46px;
+    max-height: 120px;
+    outline: none;
+    transition: border-color 0.2s;
+    background: var(--cream);
+  }
+  #userInput:focus { border-color: var(--gold); background: var(--white); }
+  #sendBtn {
+    width: 46px; height: 46px;
+    background: var(--navy);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  #sendBtn:hover { background: #1e3a5f; transform: scale(1.05); }
+  #sendBtn svg { fill: var(--gold); }
+
+  /* Summary card */
+  .summary-card {
+    background: linear-gradient(135deg, var(--navy), #1e3a5f);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-top: 10px;
+    color: var(--cream);
+  }
+  .summary-card h4 { font-family: 'Playfair Display', serif; color: var(--gold); margin-bottom: 12px; font-size: 1rem; }
+  .summary-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.07); font-size: 0.85rem; }
+  .summary-row:last-child { border-bottom: none; }
+  .summary-row .val { color: var(--gold-light); font-weight: 500; }
+
+  .progress-bar-wrap { margin-top: 8px; }
+  .progress-bar-label { font-size: 0.75rem; color: var(--muted); margin-bottom: 6px; display: flex; justify-content: space-between; }
+  .progress-bar { height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-light)); border-radius: 3px; transition: width 0.6s ease; }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.3); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Fiscal<span>IA</span></div>
+  <div class="badge">Agent IA</div>
+  <div class="year-badge">Déclaration 2025 → Revenus 2024</div>
+  <button class="export-btn" onclick="openExportModal()" id="exportBtn">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Exporter PDF
+  </button>
+</header>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-title">Étapes de la déclaration</div>
+
+    <div class="step-item done" id="s1">
+      <div class="step-num"><span>1</span></div>
+      <div>
+        <div class="step-label">Identification</div>
+        <div class="step-sub">Situation personnelle</div>
+      </div>
+    </div>
+    <div class="step-item active" id="s2">
+      <div class="step-num"><span>2</span></div>
+      <div>
+        <div class="step-label">Revenus</div>
+        <div class="step-sub">Salaires, pensions, BIC…</div>
+      </div>
+    </div>
+    <div class="step-item" id="s3">
+      <div class="step-num"><span>3</span></div>
+      <div>
+        <div class="step-label">Charges déductibles</div>
+        <div class="step-sub">Frais réels, dons, pensions…</div>
+      </div>
+    </div>
+    <div class="step-item" id="s4">
+      <div class="step-num"><span>4</span></div>
+      <div>
+        <div class="step-label">Réductions & crédits</div>
+        <div class="step-sub">Emploi à domicile, garde…</div>
+      </div>
+    </div>
+    <div class="step-item" id="s5">
+      <div class="step-num"><span>5</span></div>
+      <div>
+        <div class="step-label">Récapitulatif</div>
+        <div class="step-sub">Impôt estimé & formulaires</div>
+      </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-label">
+        <span>Progression</span>
+        <span id="pctLabel">20%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:20%"></div></div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="info-box">
+      <p><strong>📅 Date limite :</strong> 22 mai 2025 (déclaration en ligne).<br><br>
+      <strong>🔒 Confidentialité :</strong> Vos données ne sont pas transmises à l'administration fiscale. Cet outil vous aide à préparer votre déclaration.</p>
+    </div>
+  </aside>
+
+  <!-- CHAT -->
+  <div class="chat-container">
+    <div class="chat-header">
+      <div class="agent-avatar">🏛️</div>
+      <div class="agent-info">
+        <div class="name">Léa — Conseillère fiscale IA</div>
+        <div class="status"><span class="status-dot"></span> En ligne · Déclaration 2024</div>
+      </div>
+    </div>
+
+    <div class="messages" id="messages">
+      <!-- Messages injectés par JS -->
+    </div>
+
+    <div class="input-area">
+      <textarea id="userInput" rows="1" placeholder="Posez votre question ou répondez à Léa…"></textarea>
+      <button id="sendBtn" onclick="sendMessage()">
+        <svg width="20" height="20" viewBox="0 0 24 24"><path d="M2 21L23 12 2 3v7l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SYSTEM_PROMPT = `Tu es Léa, une conseillère fiscale IA experte en déclaration d'impôts sur le revenu en France.
+Tu aides les contribuables à remplir leur déclaration 2025 (revenus 2024) de manière simple et bienveillante.
+
+RÔLE :
+- Guider l'utilisateur étape par étape : identification, revenus, charges déductibles, réductions/crédits d'impôt, récapitulatif.
+- Poser des questions claires, une ou deux à la fois.
+- Expliquer les cases du formulaire 2042 et annexes (2042C, 2042RICI, etc.).
+- Calculer des estimations d'impôt si l'utilisateur te donne ses chiffres.
+- Signaler les erreurs courantes et optimisations légales.
+- Utiliser des émojis avec parcimonie pour rendre la conversation agréable.
+
+RÈGLES :
+- Répondre TOUJOURS en français.
+- Ne jamais inventer de règles fiscales ; si tu n'es pas sûre, le dire.
+- Rappeler que tu fournis une aide à la préparation, pas un conseil fiscal officiel.
+- Rester concise : réponses de 2 à 5 phrases maximum, sauf si un calcul détaillé est demandé.
+- Quand tu as besoin d'une information chiffrée, la demander explicitement.
+- Si l'utilisateur mentionne une situation complexe (revenus fonciers, plus-values, non-résident…), proposer de détailler cette partie.
+
+FORMAT des suggestions de réponses rapides :
+Quand c'est pertinent, termine ton message par :
+SUGGESTIONS: option1 | option2 | option3
+(ces suggestions s'afficheront comme boutons cliquables)`;
+
+const messages = [];
+let progress = 20;
+
+function updateProgress(pct) {
+  progress = pct;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('pctLabel').textContent = pct + '%';
+}
+
+function markStep(n) {
+  for(let i=1;i<=5;i++){
+    const el = document.getElementById('s'+i);
+    el.classList.remove('active');
+    if(i < n) el.classList.add('done'); else el.classList.remove('done');
+    if(i === n) el.classList.add('active');
+  }
+  updateProgress(Math.min(100, (n-1)*25));
+}
+
+function appendMessage(role, text, quickReplies=[]) {
+  const container = document.getElementById('messages');
+
+  if(role === 'typing') {
+    const div = document.createElement('div');
+    div.className = 'msg bot'; div.id = 'typing';
+    div.innerHTML = `<div class="avatar-sm bot">🏛️</div>
+      <div class="bubble"><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+    return;
+  }
+  const typing = document.getElementById('typing');
+  if(typing) typing.remove();
+
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+
+  // Parse summary cards
+  let html = text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+
+  const avatarHtml = role === 'bot'
+    ? `<div class="avatar-sm bot">🏛️</div>`
+    : `<div class="avatar-sm user">V</div>`;
+
+  let qrHtml = '';
+  if(quickReplies.length) {
+    qrHtml = `<div class="quick-replies">${quickReplies.map(r=>`<button class="qr-btn" onclick="sendQuick('${r}')">${r}</button>`).join('')}</div>`;
+  }
+
+  div.innerHTML = role === 'bot'
+    ? `${avatarHtml}<div><div class="bubble">${html}</div>${qrHtml}</div>`
+    : `${avatarHtml}<div class="bubble">${html}</div>`;
+
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function sendQuick(text) {
+  document.getElementById('userInput').value = text;
+  sendMessage();
+}
+
+async function sendMessage() {
+  const input = document.getElementById('userInput');
+  const text = input.value.trim();
+  if(!text) return;
+
+  input.value = '';
+  appendMessage('user', text);
+  messages.push({ role: 'user', content: text });
+  appendMessage('typing');
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: SYSTEM_PROMPT,
+        messages: messages
+      })
+    });
+    const data = await res.json();
+    let reply = data.content?.[0]?.text || "Désolée, une erreur s'est produite.";
+
+    // Extract quick replies
+    let qr = [];
+    const match = reply.match(/SUGGESTIONS:\s*(.+)$/m);
+    if(match) {
+      qr = match[1].split('|').map(s=>s.trim()).filter(Boolean);
+      reply = reply.replace(/SUGGESTIONS:.*$/m, '').trim();
+    }
+
+    messages.push({ role: 'assistant', content: reply });
+
+    // Auto-advance sidebar based on keywords
+    const lower = reply.toLowerCase();
+    if(lower.includes('salaire') || lower.includes('revenu') || lower.includes('traitement')) markStep(2);
+    if(lower.includes('charge') || lower.includes('déductible') || lower.includes('frais réels')) markStep(3);
+    if(lower.includes('réduction') || lower.includes('crédit') || lower.includes('emploi à domicile')) markStep(4);
+    if(lower.includes('récapitulatif') || lower.includes('résumé') || lower.includes('impôt estimé') || lower.includes('total')) markStep(5);
+
+    appendMessage('bot', reply, qr);
+  } catch(e) {
+    const typing = document.getElementById('typing');
+    if(typing) typing.remove();
+    appendMessage('bot', "⚠️ Impossible de contacter l'agent IA. Vérifiez votre connexion.");
+  }
+}
+
+// Auto-resize textarea
+document.getElementById('userInput').addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+});
+document.getElementById('userInput').addEventListener('keydown', function(e) {
+  if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+
+// Initial greeting
+window.addEventListener('DOMContentLoaded', () => {
+  const greeting = `Bonjour ! Je suis **Léa**, votre conseillère fiscale IA. 👋\n\nJe suis ici pour vous guider pas à pas dans votre **déclaration de revenus 2024** (formulaire 2042).\n\nPour commencer, pouvez-vous me préciser votre situation familiale ?`;
+  appendMessage('bot', greeting, ['Célibataire / seul(e)', 'Marié(e) ou Pacsé(e)', 'Divorcé(e) / Séparé(e)', 'Veuf(ve)']);
+  messages.push({ role: 'assistant', content: greeting });
+});
+</script>
+<!-- EXPORT MODAL -->
+<div class="modal-overlay" id="exportModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>📄 Exporter la déclaration PDF</h2>
+      <button class="modal-close" onclick="closeExportModal()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <h3>Informations du contribuable</h3>
+      <div class="form-row-2">
+        <div class="form-row">
+          <label class="form-label">Nom</label>
+          <input class="form-input" id="pdf_nom" placeholder="DUPONT" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">Prénom</label>
+          <input class="form-input" id="pdf_prenom" placeholder="Marie" />
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <label class="form-label">N° fiscal (SPI)</label>
+          <input class="form-input" id="pdf_spi" placeholder="0 000 000 000 000" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">Situation familiale</label>
+          <select class="form-input" id="pdf_situation">
+            <option>Célibataire</option>
+            <option>Marié(e) / Pacsé(e)</option>
+            <option>Divorcé(e)</option>
+            <option>Veuf(ve)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="modal-divider"></div>
+      <h3>Données fiscales (revenus 2024)</h3>
+
+      <div class="form-row-2">
+        <div class="form-row">
+          <label class="form-label">Salaires nets imposables (€)</label>
+          <input class="form-input" id="pdf_salaires" type="number" placeholder="0" oninput="updateTaxPreview()" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">Autres revenus (€)</label>
+          <input class="form-input" id="pdf_autres" type="number" placeholder="0" oninput="updateTaxPreview()" />
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <label class="form-label">Charges déductibles (€)</label>
+          <input class="form-input" id="pdf_charges" type="number" placeholder="0" oninput="updateTaxPreview()" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">Réductions d'impôt (€)</label>
+          <input class="form-input" id="pdf_reductions" type="number" placeholder="0" oninput="updateTaxPreview()" />
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Parts fiscales (quotient familial)</label>
+        <select class="form-input" id="pdf_parts" oninput="updateTaxPreview()">
+          <option value="1">1 part (célibataire sans enfant)</option>
+          <option value="1.5">1,5 part</option>
+          <option value="2" selected>2 parts (couple ou 1 enfant)</option>
+          <option value="2.5">2,5 parts</option>
+          <option value="3">3 parts</option>
+          <option value="3.5">3,5 parts</option>
+          <option value="4">4 parts et plus</option>
+        </select>
+      </div>
+
+      <div class="modal-divider"></div>
+
+      <div class="tax-preview">
+        <h3>📊 Estimation de l'impôt</h3>
+        <div class="tax-row"><span>Revenu brut global</span><span class="tv" id="prev_brut">— €</span></div>
+        <div class="tax-row"><span>Abattement 10% (salaires)</span><span class="tv" id="prev_abatt">— €</span></div>
+        <div class="tax-row"><span>Revenu net imposable</span><span class="tv" id="prev_net">— €</span></div>
+        <div class="tax-row"><span>Impôt brut (barème 2024)</span><span class="tv" id="prev_brut_imp">— €</span></div>
+        <div class="tax-row"><span>Réductions appliquées</span><span class="tv" id="prev_red">— €</span></div>
+        <div class="tax-row"><span><strong>Impôt estimé à payer</strong></span><span class="tv" id="prev_final">— €</span></div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeExportModal()">Annuler</button>
+        <button class="btn-primary" onclick="generatePDF()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Télécharger le PDF
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── TAX CALCULATION (barème 2024 sur revenus 2024) ──────────────────────────
+function calcImpot(revenuNet, parts) {
+  const rqf = revenuNet / parts;
+  let impot = 0;
+  // Tranches 2024
+  const tranches = [
+    { max: 11294,  taux: 0 },
+    { max: 28797,  taux: 0.11 },
+    { max: 82341,  taux: 0.30 },
+    { max: 177106, taux: 0.41 },
+    { max: Infinity, taux: 0.45 },
+  ];
+  let prev = 0;
+  for (const t of tranches) {
+    if (rqf <= prev) break;
+    const base = Math.min(rqf, t.max) - prev;
+    impot += base * t.taux;
+    prev = t.max;
+  }
+  return Math.max(0, impot * parts);
+}
+
+function fmt(n) { return n.toLocaleString('fr-FR', { maximumFractionDigits: 0 }) + ' €'; }
+
+function updateTaxPreview() {
+  const salaires  = parseFloat(document.getElementById('pdf_salaires').value) || 0;
+  const autres    = parseFloat(document.getElementById('pdf_autres').value)   || 0;
+  const charges   = parseFloat(document.getElementById('pdf_charges').value)  || 0;
+  const reductions= parseFloat(document.getElementById('pdf_reductions').value)||0;
+  const parts     = parseFloat(document.getElementById('pdf_parts').value)    || 1;
+
+  const brut   = salaires + autres;
+  const abatt  = Math.min(Math.max(salaires * 0.10, 495), 14171);
+  const net    = Math.max(0, brut - abatt - charges);
+  const brutImp= calcImpot(net, parts);
+  const final  = Math.max(0, brutImp - reductions);
+
+  document.getElementById('prev_brut').textContent     = fmt(brut);
+  document.getElementById('prev_abatt').textContent    = '− ' + fmt(abatt);
+  document.getElementById('prev_net').textContent      = fmt(net);
+  document.getElementById('prev_brut_imp').textContent = fmt(brutImp);
+  document.getElementById('prev_red').textContent      = '− ' + fmt(reductions);
+  document.getElementById('prev_final').textContent    = fmt(final);
+
+  return { brut, abatt, net, brutImp, reductions, final, parts };
+}
+
+// ── MODAL ────────────────────────────────────────────────────────────────────
+function openExportModal() {
+  document.getElementById('exportModal').classList.add('open');
+  updateTaxPreview();
+}
+function closeExportModal() {
+  document.getElementById('exportModal').classList.remove('open');
+}
+document.getElementById('exportModal').addEventListener('click', function(e) {
+  if (e.target === this) closeExportModal();
+});
+
+// ── PDF GENERATION ───────────────────────────────────────────────────────────
+function generatePDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+  const nom       = document.getElementById('pdf_nom').value      || 'Non renseigné';
+  const prenom    = document.getElementById('pdf_prenom').value   || 'Non renseigné';
+  const spi       = document.getElementById('pdf_spi').value      || '—';
+  const situation = document.getElementById('pdf_situation').value;
+  const parts     = document.getElementById('pdf_parts').value;
+  const salaires  = parseFloat(document.getElementById('pdf_salaires').value) || 0;
+  const autres    = parseFloat(document.getElementById('pdf_autres').value)   || 0;
+  const charges   = parseFloat(document.getElementById('pdf_charges').value)  || 0;
+  const reductions= parseFloat(document.getElementById('pdf_reductions').value)||0;
+  const tax       = updateTaxPreview();
+
+  const W = 210; // page width mm
+  const M = 18;  // margin
+  let y   = 0;
+
+  // ── PAGE BACKGROUND ──
+  doc.setFillColor(13, 27, 42);
+  doc.rect(0, 0, W, 297, 'F');
+
+  // ── HEADER BAND ──
+  doc.setFillColor(201, 168, 76);
+  doc.rect(0, 0, W, 42, 'F');
+
+  // Logo
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(26);
+  doc.setTextColor(13, 27, 42);
+  doc.text('FiscalIA', M, 20);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(13, 27, 42, 0.7);
+  doc.text('Déclaration de revenus 2025 — Revenus 2024', M, 28);
+  doc.text('Document préparé le ' + new Date().toLocaleDateString('fr-FR'), M, 35);
+
+  // Document title right-aligned
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(13, 27, 42);
+  doc.text('RÉCAPITULATIF FISCAL', W - M, 22, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text('Formulaire 2042 — Aide à la déclaration', W - M, 30, { align: 'right' });
+
+  y = 54;
+
+  // ── SECTION helper ──
+  function section(title) {
+    doc.setFillColor(30, 58, 95);
+    doc.roundedRect(M, y, W - 2*M, 9, 2, 2, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(201, 168, 76);
+    doc.text(title.toUpperCase(), M + 4, y + 6);
+    y += 14;
+  }
+
+  // ── ROW helper ──
+  function row(label, value, highlight=false) {
+    doc.setDrawColor(255, 255, 255, 0.08);
+    doc.setLineWidth(0.2);
+    doc.line(M, y, W - M, y);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(213, 208, 196);
+    doc.text(label, M + 3, y + 6);
+
+    doc.setFont('helvetica', highlight ? 'bold' : 'normal');
+    doc.setTextColor(highlight ? 111 : 201, highlight ? 207 : 168, highlight ? 151 : 76);
+    doc.text(value, W - M - 3, y + 6, { align: 'right' });
+    y += 9;
+  }
+
+  function spacer(h=5) { y += h; }
+
+  // ── IDENTITÉ ──
+  section('Identification du contribuable');
+  row('Nom et Prénom', prenom + ' ' + nom.toUpperCase());
+  row('Numéro fiscal (SPI)', spi);
+  row('Situation familiale', situation);
+  row('Quotient familial', parts + ' part(s)');
+  spacer();
+
+  // ── REVENUS ──
+  section('Revenus déclarés');
+  row('Salaires, traitements nets (cases 1AJ/1BJ)', salaires.toLocaleString('fr-FR') + ' €');
+  row('Autres revenus', autres.toLocaleString('fr-FR') + ' €');
+  row('Revenu brut global', tax.brut.toLocaleString('fr-FR') + ' €');
+  spacer();
+
+  // ── DÉDUCTIONS ──
+  section('Déductions et charges');
+  row('Abattement 10% sur salaires (plafonné)', '− ' + tax.abatt.toLocaleString('fr-FR') + ' €');
+  row('Charges déductibles', '− ' + charges.toLocaleString('fr-FR') + ' €');
+  row('Revenu net imposable', tax.net.toLocaleString('fr-FR') + ' €');
+  spacer();
+
+  // ── CALCUL ──
+  section('Calcul de l\'impôt (barème progressif 2024)');
+  row('Impôt brut avant réductions', tax.brutImp.toLocaleString('fr-FR') + ' €');
+  row('Réductions et crédits d\'impôt', '− ' + reductions.toLocaleString('fr-FR') + ' €');
+  spacer(3);
+
+  // Final tax box
+  doc.setFillColor(201, 168, 76, 0.15);
+  doc.setDrawColor(201, 168, 76);
+  doc.setLineWidth(0.5);
+  doc.roundedRect(M, y, W - 2*M, 14, 3, 3);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(201, 168, 76);
+  doc.text('IMPÔT ESTIMÉ À PAYER', M + 5, y + 9);
+  doc.setFontSize(13);
+  doc.setTextColor(111, 207, 151);
+  doc.text(tax.final.toLocaleString('fr-FR') + ' €', W - M - 5, y + 9, { align: 'right' });
+  y += 22;
+
+  // ── CONVERSATION SUMMARY ──
+  spacer(3);
+  section('Résumé de la conversation avec Léa (IA)');
+
+  const msgs = messages.filter(m => m.role === 'assistant').slice(-5);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(180, 175, 165);
+
+  msgs.forEach(m => {
+    const clean = m.content.replace(/\*\*/g, '').replace(/\n+/g, ' ').substring(0, 180);
+    const lines = doc.splitTextToSize('• ' + clean + (m.content.length > 180 ? '…' : ''), W - 2*M - 6);
+    if (y + lines.length * 5 > 270) return; // avoid overflow
+    doc.text(lines, M + 3, y);
+    y += lines.length * 5 + 2;
+  });
+
+  spacer(6);
+
+  // ── FOOTER ──
+  doc.setFillColor(201, 168, 76);
+  doc.rect(0, 282, W, 15, 'F');
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(13, 27, 42);
+  doc.text('⚠ Ce document est une aide à la préparation de votre déclaration. Il ne constitue pas un avis fiscal officiel.', W/2, 289, { align: 'center' });
+  doc.text('Pour valider votre déclaration, rendez-vous sur impots.gouv.fr avant le 22 mai 2025.', W/2, 294, { align: 'center' });
+
+  // Download
+  const filename = `FiscalIA_${nom}_${prenom}_2024.pdf`.replace(/\s+/g, '_');
+  doc.save(filename);
+  closeExportModal();
+}
+</script>
+
+
