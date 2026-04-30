@@ -723,7 +723,7 @@ window.addEventListener('DOMContentLoaded', () => {
       </div>
 
       <div class="modal-divider"></div>
-      <h3>Données fiscales (revenus 2024)</h3>
+      <h3>Données fiscales (revenus 2025)</h3>
 
       <div class="form-row-2">
         <div class="form-row">
@@ -782,7 +782,7 @@ window.addEventListener('DOMContentLoaded', () => {
 </div>
 
 <script>
-// ── TAX CALCULATION (barème 2024 sur revenus 2024) ──────────────────────────
+// ── TAX CALCULATION (barème 2024 sur revenus 2025) ──────────────────────────
 function calcImpot(revenuNet, parts) {
   const rqf = revenuNet / parts;
   let impot = 0;
@@ -878,7 +878,7 @@ function generatePDF() {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(13, 27, 42, 0.7);
-  doc.text('Déclaration de revenus 2025 — Revenus 2024', M, 28);
+  doc.text('Déclaration de revenus 2025 — revenus 2025', M, 28);
   doc.text('Document préparé le ' + new Date().toLocaleDateString('fr-FR'), M, 35);
 
   // Document title right-aligned
